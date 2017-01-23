@@ -1,7 +1,24 @@
-title: Grav
+title: pShots
+default_lang: en
 author:
-  name: Joe Bloggs
-  email: 'joe@test.com'
+  name: 'Prasad Karkera'
+  email: karkera.prasad@gmail.com
+taxonomies:
+  - photography
+  - pshots
+  - nature
+  - landscapes
+  - portraits
+  - digital
+  - canon
+  - EOS
+  - 6D
 metadata:
-    description: 'Grav is an easy to use, yet powerful, open source flat-file CMS'
-
+  description: 'Nature, People, Wild Life, Landscapes photography by Prasad Karkera, based in California'
+summary:
+  enabled: true
+  format: short
+  size: 300
+  delimiter: '==='
+blog:
+  route: /blog

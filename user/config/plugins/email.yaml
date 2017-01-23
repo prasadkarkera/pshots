@@ -1,14 +1,16 @@
 enabled: true
-from: joe@test.com
-from_name: Joe
-to: joe@test.com
-to_name: Joe
+from: karkera.prasad@gmail.com
+from_name: 'Prasad Karkera'
+to: prasad.karkera@gmail.com
+to_name: 'Prasad Karkera'
 mailer:
-  engine: mail
+  engine: smtp
   smtp:
-    server: localhost
-    port: 25
-    encryption: none
+    server: smtp.gmail.com
+    port: 465
+    encryption: ssl
+    user: karkera.prasad@gmail.com
+    password: ihxjyhljgammkjkz
   sendmail:
     bin: /usr/sbin/sendmail
 content_type: text/html
