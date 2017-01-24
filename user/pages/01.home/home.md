@@ -76,4 +76,3 @@ form:
             display: thank-you
 ---
 
-![](pshots_IMG_4547.jpg)![](pshots_IMG_3620_blacknwhite.jpg)
