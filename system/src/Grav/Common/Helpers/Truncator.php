@@ -2,7 +2,7 @@
 /**
  * @package    Grav.Common.Helpers
  *
- * @copyright  Copyright (C) 2014 - 2016 RocketTheme, LLC. All rights reserved.
+ * @copyright  Copyright (C) 2015 - 2018 Trilby Media, LLC. All rights reserved.
  * @license    MIT License; see LICENSE file for details.
  */
 
@@ -10,6 +10,8 @@ namespace Grav\Common\Helpers;
 
 use DOMText;
 use DOMDocument;
+use DOMElement;
+use DOMNode;
 use DOMWordsIterator;
 use DOMLettersIterator;
 
@@ -32,7 +34,7 @@ class Truncator {
      * @param  string  $ellipsis String to use as ellipsis (if any).
      * @return string            Safe truncated HTML.
      */
-    public static function truncateWords($html, $limit = 0, $ellipsis = "")
+    public static function truncateWords($html, $limit = 0, $ellipsis = '')
     {
         if ($limit <= 0) {
             return $html;
@@ -92,7 +94,7 @@ class Truncator {
         $dom = self::htmlToDomDocument($html);
 
         // Grab the body of our DOM.
-        $body = $dom->getElementsByTagName("body")->item(0);
+        $body = $dom->getElementsByTagName('body')->item(0);
 
         // Iterate over letters.
         $letters = new DOMLettersIterator($body);
@@ -118,7 +120,7 @@ class Truncator {
 
     /**
      * Builds a DOMDocument object from a string containing HTML.
-     * @param string HTML to load
+     * @param string $html HTML to load
      * @returns DOMDocument Returns a DOMDocument object.
      */
     public static function htmlToDomDocument($html)
@@ -179,7 +181,7 @@ class Truncator {
     {
         $avoid = array('a', 'strong', 'em', 'h1', 'h2', 'h3', 'h4', 'h5'); //html tags to avoid appending the ellipsis to
 
-        if (in_array($domNode->parentNode->nodeName, $avoid) && $domNode->parentNode->parentNode !== null) {
+        if ($domNode->parentNode->parentNode !== null && in_array($domNode->parentNode->nodeName, $avoid, true)) {
             // Append as text node to parent instead
             $textNode = new DOMText($ellipsis);
 
@@ -202,7 +204,7 @@ class Truncator {
      * @return string
      */
     private static function innerHTML($element) {
-        $innerHTML = "";
+        $innerHTML = '';
         $children = $element->childNodes;
         foreach ($children as $child)
         {

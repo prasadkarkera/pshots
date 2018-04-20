@@ -2,15 +2,17 @@
 /**
  * @package    Grav.Common.Helpers
  *
- * @copyright  Copyright (C) 2014 - 2016 RocketTheme, LLC. All rights reserved.
+ * @copyright  Copyright (C) 2015 - 2018 Trilby Media, LLC. All rights reserved.
  * @license    MIT License; see LICENSE file for details.
  */
 
 namespace Grav\Common\Helpers;
 
 use Grav\Common\Grav;
+use Grav\Common\Page\Page;
 use Grav\Common\Uri;
 use Grav\Common\Page\Medium\Medium;
+use Grav\Common\Utils;
 use RocketTheme\Toolbox\Event\Event;
 use RocketTheme\Toolbox\ResourceLocator\UniformResourceLocator;
 
@@ -19,11 +21,11 @@ class Excerpts
     /**
      * Process Grav image media URL from HTML tag
      *
-     * @param $html         HTML tag e.g. `<img src="image.jpg" />`
-     * @param $page         The current page object
-     * @return string       Returns final HTML string
+     * @param string $html         HTML tag e.g. `<img src="image.jpg" />`
+     * @param Page   $page         The current page object
+     * @return string              Returns final HTML string
      */
-    public static function processImageHtml($html, $page)
+    public static function processImageHtml($html, Page $page)
     {
         $excerpt = static::getExcerptFromHtml($html, 'img');
 
@@ -47,14 +49,14 @@ class Excerpts
     /**
      * Get an Excerpt array from a chunk of HTML
      *
-     * @param $html         Chunk of HTML
-     * @param $tag          a tag, for example `img`
+     * @param string $html         Chunk of HTML
+     * @param string $tag          A tag, for example `img`
      * @return array|null   returns nested array excerpt
      */
     public static function getExcerptFromHtml($html, $tag)
     {
         $doc = new \DOMDocument();
-        $doc->loadHtml($html);
+        $doc->loadHTML($html);
         $images = $doc->getElementsByTagName($tag);
         $excerpt = null;
 
@@ -109,11 +111,11 @@ class Excerpts
      * Process a Link excerpt
      *
      * @param $excerpt
-     * @param $page
+     * @param Page $page
      * @param string $type
      * @return mixed
      */
-    public static function processLinkExcerpt($excerpt, $page, $type = 'link')
+    public static function processLinkExcerpt($excerpt, Page $page, $type = 'link')
     {
         $url = htmlspecialchars_decode(urldecode($excerpt['element']['attributes']['href']));
 
@@ -140,9 +142,9 @@ class Excerpts
                 foreach ($actions as $attrib => $value) {
                     $key = $attrib;
 
-                    if (in_array($attrib, $valid_attributes)) {
+                    if (in_array($attrib, $valid_attributes, true)) {
                         // support both class and classes.
-                        if ($attrib == 'classes') {
+                        if ($attrib === 'classes') {
                             $attrib = 'class';
                         }
                         $excerpt['element']['attributes'][$attrib] = str_replace(',', ' ', $value);
@@ -189,11 +191,11 @@ class Excerpts
     /**
      * Process an image excerpt
      *
-     * @param $excerpt
-     * @param $page
+     * @param array $excerpt
+     * @param Page $page
      * @return mixed
      */
-    public static function processImageExcerpt($excerpt, $page)
+    public static function processImageExcerpt(array $excerpt, Page $page)
     {
         $url = htmlspecialchars_decode(urldecode($excerpt['element']['attributes']['src']));
         $url_parts = static::parseUrl($url);
@@ -209,8 +211,8 @@ class Excerpts
         } else {
             // File is also local if scheme is http(s) and host matches.
             $local_file = isset($url_parts['path'])
-                && (empty($url_parts['scheme']) || in_array($url_parts['scheme'], ['http', 'https']))
-                && (empty($url_parts['host']) || $url_parts['host'] == Grav::instance()['uri']->host());
+                && (empty($url_parts['scheme']) || in_array($url_parts['scheme'], ['http', 'https'], true))
+                && (empty($url_parts['host']) || $url_parts['host'] === Grav::instance()['uri']->host());
 
             if ($local_file) {
                 $filename = basename($url_parts['path']);
@@ -225,6 +227,7 @@ class Excerpts
                     $base_url = rtrim(Grav::instance()['base_url_relative'] . Grav::instance()['pages']->base(), '/');
                     $page_route = '/' . ltrim(str_replace($base_url, '', $folder), '/');
 
+                    /** @var Page $ext_page */
                     $ext_page = Grav::instance()['pages']->dispatch($page_route, true);
                     if ($ext_page) {
                         $media = $ext_page->media();
@@ -243,13 +246,14 @@ class Excerpts
 
             // Process operations
             $medium = static::processMediaActions($medium, $url_parts);
+            $element_excerpt = $excerpt['element']['attributes'];
 
-            $alt = isset($excerpt['element']['attributes']['alt']) ? $excerpt['element']['attributes']['alt'] : '';
-            $title = isset($excerpt['element']['attributes']['title']) ? $excerpt['element']['attributes']['title'] : '';
-            $class = isset($excerpt['element']['attributes']['class']) ? $excerpt['element']['attributes']['class'] : '';
-            $id = isset($excerpt['element']['attributes']['id']) ? $excerpt['element']['attributes']['id'] : '';
+            $alt = isset($element_excerpt['alt']) ? $element_excerpt['alt'] : '';
+            $title = isset($element_excerpt['title']) ? $element_excerpt['title'] : '';
+            $class = isset($element_excerpt['class']) ? $element_excerpt['class'] : '';
+            $id = isset($element_excerpt['id']) ? $element_excerpt['id'] : '';
 
-            $excerpt['element'] = $medium->parseDownElement($title, $alt, $class, $id, true);
+            $excerpt['element'] = $medium->parsedownElement($title, $alt, $class, $id, true);
 
         } else {
             // Not a current page media file, see if it needs converting to relative.
@@ -319,7 +323,7 @@ class Excerpts
      */
     protected static function parseUrl($url)
     {
-        $url_parts = parse_url($url);
+        $url_parts = Utils::multibyteParseUrl($url);
 
         if (isset($url_parts['scheme'])) {
             /** @var UniformResourceLocator $locator */

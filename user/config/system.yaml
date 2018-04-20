@@ -114,7 +114,7 @@ images:
   auto_fix_orientation: false
 media:
   enable_media_timestamp: false
-  upload_limit: 0
+  upload_limit: 2000000
 session:
   enabled: true
   timeout: 1800

@@ -2,20 +2,31 @@
 /**
  * @package    Grav.Common
  *
- * @copyright  Copyright (C) 2014 - 2016 RocketTheme, LLC. All rights reserved.
+ * @copyright  Copyright (C) 2015 - 2018 Trilby Media, LLC. All rights reserved.
  * @license    MIT License; see LICENSE file for details.
  */
 
 namespace Grav\Common;
 
+use Grav\Common\Config\Config;
+use Grav\Common\Language\Language;
 use Grav\Common\Page\Medium\ImageMedium;
+use Grav\Common\Page\Medium\Medium;
+use Grav\Common\Page\Page;
 use RocketTheme\Toolbox\DI\Container;
 use RocketTheme\Toolbox\Event\Event;
+use RocketTheme\Toolbox\Event\EventDispatcher;
 
 class Grav extends Container
 {
+    /**
+     * @var string Processed output for the page.
+     */
+    public $output;
 
-    /** @var static The singleton instance */
+    /**
+     * @var static The singleton instance
+     */
     protected static $instance;
 
     /**
@@ -28,8 +39,7 @@ class Grav extends Container
         'uri'                     => 'Grav\Common\Uri',
         'events'                  => 'RocketTheme\Toolbox\Event\EventDispatcher',
         'cache'                   => 'Grav\Common\Cache',
-        'session'                 => 'Grav\Common\Session',
-        'Grav\Common\Service\MessagesServiceProvider',
+        'Grav\Common\Service\SessionServiceProvider',
         'plugins'                 => 'Grav\Common\Plugins',
         'themes'                  => 'Grav\Common\Themes',
         'twig'                    => 'Grav\Common\Twig\Twig',
@@ -41,6 +51,7 @@ class Grav extends Container
         'Grav\Common\Service\PageServiceProvider',
         'Grav\Common\Service\OutputServiceProvider',
         'browser'                 => 'Grav\Common\Browser',
+        'exif'                    => 'Grav\Common\Helpers\Exif',
         'Grav\Common\Service\StreamsServiceProvider',
         'Grav\Common\Service\ConfigServiceProvider',
         'inflector'               => 'Grav\Common\Inflector',
@@ -59,7 +70,9 @@ class Grav extends Container
         'renderProcessor'         => 'Grav\Common\Processors\RenderProcessor',
     ];
 
-    /** @var array All processors that are processed in $this->process() */
+    /**
+     * @var array All processors that are processed in $this->process()
+     */
     protected $processors = [
         'siteSetupProcessor',
         'configurationProcessor',
@@ -112,9 +125,6 @@ class Grav extends Container
      */
     public function process()
     {
-        /** @var Debugger $debugger */
-        $debugger = $this['debugger'];
-
         // process all processors (e.g. config, initialize, assets, ..., render)
         foreach ($this->processors as $processor) {
             $processor = $this[$processor];
@@ -123,13 +133,9 @@ class Grav extends Container
             });
         }
 
-        // Set the header type
-        $this->header();
-
-        echo $this->output;
+        /** @var Debugger $debugger */
+        $debugger = $this['debugger'];
         $debugger->render();
-
-        $this->fireEvent('onOutputRendered');
 
         register_shutdown_function([$this, 'shutdown']);
     }
@@ -142,7 +148,7 @@ class Grav extends Container
         // Initialize Locale if set and configured.
         if ($this['language']->enabled() && $this['config']->get('system.languages.override_locale')) {
             $language = $this['language']->getLanguage();
-            setlocale(LC_ALL, count($language < 3) ? ($language . '_' . strtoupper($language)) : $language);
+            setlocale(LC_ALL, strlen($language) < 3 ? ($language . '_' . strtoupper($language)) : $language);
         } elseif ($this['config']->get('system.default_locale')) {
             setlocale(LC_ALL, $this['config']->get('system.default_locale'));
         }
@@ -168,7 +174,7 @@ class Grav extends Container
         }
 
         if ($code === null) {
-            $code = $this['config']->get('system.pages.redirect_default_code', 301);
+            $code = $this['config']->get('system.pages.redirect_default_code', 302);
         }
 
         if (isset($this['session'])) {
@@ -221,13 +227,22 @@ class Grav extends Container
 
         header('Content-type: ' . Utils::getMimeByExtension($format, 'text/html'));
 
+        $cache_control = $page->cacheControl();
+
         // Calculate Expires Headers if set to > 0
         $expires = $page->expires();
 
         if ($expires > 0) {
             $expires_date = gmdate('D, d M Y H:i:s', time() + $expires) . ' GMT';
-            header('Cache-Control: max-age=' . $expires);
+            if (!$cache_control) {
+                header('Cache-Control: max-age=' . $expires);
+            }
             header('Expires: ' . $expires_date);
+        }
+
+        // Set cache-control header
+        if ($cache_control) {
+            header('Cache-Control: ' . strtolower($cache_control));
         }
 
         // Set the last modified time
@@ -238,12 +253,7 @@ class Grav extends Container
 
         // Calculate a Hash based on the raw file
         if ($page->eTag()) {
-            header('ETag: ' . md5($page->raw() . $page->modified()));
-        }
-
-        // Set debugger data in headers
-        if (!($format === null || $format == 'html')) {
-            $this['debugger']->enabled(false);
+            header('ETag: "' . md5($page->raw() . $page->modified()).'"');
         }
 
         // Set HTTP response code
@@ -425,7 +435,7 @@ class Grav extends Container
      */
     public function fallbackUrl($path)
     {
-      	$this->fireEvent('onPageFallBackUrl');
+        $this->fireEvent('onPageFallBackUrl');
 
         /** @var Uri $uri */
         $uri = $this['uri'];
@@ -438,10 +448,11 @@ class Grav extends Container
         $supported_types = $config->get('media.types');
 
         // Check whitelist first, then ensure extension is a valid media type
-        if (!empty($fallback_types) && !in_array($uri_extension, $fallback_types)) {
-            return;
-        } elseif (!array_key_exists($uri_extension, $supported_types)) {
-            return;
+        if (!empty($fallback_types) && !\in_array($uri_extension, $fallback_types, true)) {
+            return false;
+        }
+        if (!array_key_exists($uri_extension, $supported_types)) {
+            return false;
         }
 
         $path_parts = pathinfo($path);
@@ -484,6 +495,11 @@ class Grav extends Container
                 }
                 Utils::download($page->path() . DIRECTORY_SEPARATOR . $uri->basename(), $download);
             }
+
+            // Nothing found
+            return false;
         }
+
+        return $page;
     }
 }
