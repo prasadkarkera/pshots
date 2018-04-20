@@ -1,8 +1,6 @@
 enabled: true
 about_label: About
 about_header: 'pShots Photography'
-about_content: 'Nulla consequat, ex ut suscipit rutrum, mi dolor tincidunt erat, et scelerisque turpis ipsum eget quis orci mattis aliquet. Maecenas fringilla et ante at lorem et ipsum. Dolor nulla eu bibendum sapien. Donec non pharetra dui. Nulla consequat, ex ut suscipit rutrum, mi dolor tincidunt erat, et scelerisque turpis ipsum.'
-copyright: '&copy; Unttled. Design: <a href="http://html5up.net">HTML5 UP</a>. Images: <a href="https://pixabay.com/en/users/Oldiefan-740865/">Oldiefan</a>.'
 social_networks:
   -
     icon: fa-twitter
